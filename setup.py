@@ -22,23 +22,23 @@ def import_error_message(package):
     print("'conda install {}' (if you use anaconda python)".format(package))
 
 
-try:
-    from Cython.Distutils import build_ext
-except ImportError:
-    import_error_message('cython')
-    sys.exit()
+# try:
+#     from Cython.Distutils import build_ext
+# except ImportError:
+#     import_error_message('cython')
+#     sys.exit()
 
-try:
-    import numpy
-except ImportError:
-    import_error_message('numpy')
-    sys.exit()
+# try:
+#     import numpy
+# except ImportError:
+#     import_error_message('numpy')
+#     sys.exit()
 
-try:
-    import requests
-except ImportError:
-    import_error_message('requests')
-    sys.exit()
+# try:
+#     import requests
+# except ImportError:
+#     import_error_message('requests')
+#     sys.exit()
 
 
 """
