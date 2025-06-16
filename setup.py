@@ -353,6 +353,6 @@ setup(name='TelFit',
                 'SkipLBL': OnlyInstall},
       data_files=data_files,
       install_requires=requires,
-      setup_requires=['cython', 'requests', 'numpy>=1.6'],
+      setup_requires=['cython', 'requests', 'numpy'],
       package_dir={'': 'src'}
 )
