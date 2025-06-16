@@ -31,8 +31,8 @@ from collections import defaultdict
 import struct
 import warnings
 import time
-import FittingUtilities
 import copy
+import random
 
 import scipy.interpolate
 import lockfile
@@ -120,15 +120,20 @@ class Modeler:
         indices = {}
         self.debug = debug
         self.print_lblrtm_output = print_lblrtm_output
+
+        if 'TELLURICMODELING' in os.environ:
+            TelluricModelingDirRoot = os.environ['TELLURICMODELING']
+
         if not TelluricModelingDirRoot.endswith("/"):
             TelluricModelingDirRoot = TelluricModelingDirRoot + "/"
-        if not 'rundir1' in os.listdir(TelluricModelingDirRoot):
-            try:
-                TelluricModelingDirRoot = os.environ['TELLURICMODELING']
-            except KeyError:
-                raise ModelerException('Directory {} is not configured correctly or does not exist, and the '
-                                       'environment variable TELLURICMODELING is not set!'.format(
-                    TelluricModelingDirRoot))
+        # if not 'rundir1' in os.listdir(TelluricModelingDirRoot):
+        #     try:
+        #         TelluricModelingDirRoot = os.environ['TELLURICMODELING']
+        #     except KeyError:
+        #         raise ModelerException('Directory {} is not configured correctly or does not exist, and the '
+        #                                'environment variable TELLURICMODELING is not set!'.format(
+        #             TelluricModelingDirRoot))
+
         self.TelluricModelingDirRoot = TelluricModelingDirRoot
 
         #Determine working directories
@@ -303,28 +308,29 @@ class Modeler:
         found = False
         possible_rundirs = [d for d in os.listdir(self.TelluricModelingDirRoot) if
                             d.startswith('rundir') and "." not in d]
+        random.shuffle(possible_rundirs)
+        
         while not found:
             for test in possible_rundirs:
                 test = "%s%s" % (TelluricModelingDirRoot, test)
                 if not test.endswith("/"):
                     test = test + "/"
 
-                lock = lockfile.FileLock(test)
-                if not lock.is_locked():
+                self.lock = lockfile.FileLock(test)
+                if not self.lock.is_locked():
                     TelluricModelingDir = test
                     ModelDir = "%sOutputModels/" % TelluricModelingDir
-                    lock.acquire()
+                    self.lock.acquire()
                     found = True
                     break
             if not found:
-                logging.warn("Un-locked directory not found! Waiting 10 seconds...")
+                logging.warning("Un-locked directory not found! Waiting 10 seconds...")
                 time.sleep(10)
         logging.debug('Telluric Modeling Directory = {}'.format(TelluricModelingDir))
         logging.debug('Mode Directory = {}'.format(ModelDir))
 
         self.TelluricModelingDir = TelluricModelingDir
         self.ModelDir = ModelDir
-        self.lock = lock
 
 
     def MakeModel(self, pressure=795.0, temperature=283.0, lowfreq=4000, highfreq=4600, angle=45.0, humidity=50.0,
@@ -451,8 +457,9 @@ class Modeler:
                     if not self.print_lblrtm_output:
                         command = subprocess.check_call(cmd, shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-                except subprocess.CalledProcessError:
-                    raise subprocess.CalledProcessError("Error: Command '{}' failed in directory {}".format(cmd, TelluricModelingDir))
+                except subprocess.CalledProcessError as e:
+                    raise e
+                    # raise subprocess.CalledProcessError("Error: Command '{}' failed in directory {}".format(cmd, TelluricModelingDir))
       
 
                 #Read in TAPE12, which is the output of LBLRTM
@@ -502,6 +509,7 @@ class Modeler:
         self.Cleanup()  #Un-lock the working directory
 
         if wavegrid != None:
+            import FittingUtilities
             model = DataStructures.xypoint(x=wavelength[::-1], y=transmission[::-1])
             return FittingUtilities.RebinData(model, wavegrid)
 
